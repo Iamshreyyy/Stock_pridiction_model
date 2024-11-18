@@ -1,6 +1,5 @@
 import yfinance as yf
 import pandas as pd
-
 def load_and_preprocess_data(stock_symbol, start_date, end_date):
     # Download historical stock data
     stock_data = yf.download(stock_symbol, start=start_date, end=end_date)
