@@ -3,7 +3,7 @@ from model_training import train_and_evaluate_model
 from utils import plot_predictions
 
 def main():
-    stock_symbol = 'MRF.NS'
+    stock_symbol = 'IOC.NS'
     start_date = '2010-01-01'
     end_date = '2024-01-01'
 
