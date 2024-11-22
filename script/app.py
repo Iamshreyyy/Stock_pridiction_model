@@ -482,7 +482,6 @@ def display_ticker(stock_data):
         }}
         </style>
         """, unsafe_allow_html=True)
-
 def main():
     # Set up the page configuration
     st.set_page_config(page_title="Stock Price Prediction App", layout="wide")
@@ -490,11 +489,8 @@ def main():
     # Header section
     with st.container():
         st.title("📈 Stock Price Prediction App")
-        st.markdown("""
-        This app predicts stock prices using historical data and advanced machine learning models.
-        Enter a stock symbol, select a date range, and click **Predict** to see the results.
-        """)
-    
+        st.markdown("""This app predicts stock prices using historical data and advanced machine learning models. Enter a stock symbol, select a date range, and click **Predict** to see the results.""")
+
     # Load stocks
     indian_stocks = load_indian_stocks()
     global_stocks = load_global_stocks()
@@ -504,9 +500,6 @@ def main():
     # Define the stock symbols to display
     stock_symbols = ["AAPL", "GOOGL", "TSLA", "MSFT", "AMZN", "NFLX", "NVDA", "META"]
 
-    # Create a placeholder for the ticker section
-    ticker_placeholder = st.empty()
-
     # Input and prediction sections (remain outside the auto-refresh scope)
     with st.container():
         st.subheader("🔧 User Inputs")
@@ -514,20 +507,26 @@ def main():
 
         with col1:
             stock_name = st.selectbox(
-            "Search for a stock by name:",
-            options=[""] + list(stock_dict.keys()),
-            format_func=lambda x: "Select a stock" if x == "" else x,
+                "Search for a stock by name:",
+                options=[""] + list(stock_dict.keys()),
+                format_func=lambda x: "Select a stock" if x == "" else x,
             )
         with col2:
             stock_symbol = stock_dict.get(stock_name, "")
             start_date = st.date_input("Start Date:", pd.to_datetime("2010-01-01")) 
-                
+
         with col3:
             end_date = st.date_input(
                 "End Date:",
                 value=pd.to_datetime('2024-01-01'),
                 help="Select the end date for historical data."
             )
+
+        # Reset session state if the selected stock changes
+        if 'previous_symbol' not in st.session_state or st.session_state.previous_symbol != stock_symbol:
+            st.session_state.previous_symbol = stock_symbol
+            if 'prediction' in st.session_state:
+                del st.session_state.prediction  # Clear previous prediction data
 
         st.markdown("---")
 
@@ -571,18 +570,6 @@ def main():
     with st.container():
         st.markdown("---")
         st.write("Developed by [Your Name](https://github.com/your-profile).")
-
-    # Auto-refresh only the ticker section every 10 seconds
-    def refresh_ticker():
-        stock_data = get_stock_data(stock_symbols)
-        ticker_placeholder.empty()  # Clear previous content
-        display_ticker(stock_data)
-
-    # Setting up auto-refresh for ticker every 10 seconds
-    st_autorefresh(interval=10_000, limit=None, key="ticker_refresh")
-    refresh_ticker()  # Initial load of the ticker data
-
+    
 if __name__ == "__main__":
     main()
-
-
