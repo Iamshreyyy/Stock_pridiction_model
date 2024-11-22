@@ -404,8 +404,36 @@ import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from utils import plot_predictions  # Ensure this file exists and contains the function
 from main import run_model  # Ensure this file exists and contains the function
+import requests
 import yfinance as yf
 from streamlit_autorefresh import st_autorefresh
+
+@st.cache_data
+def load_indian_stocks():
+    """
+    Load Indian stock data from a local preloaded CSV file.
+    """
+    try:
+        data = pd.read_csv("../data/EQUITY_L.csv")
+        data = data[['SYMBOL', 'NAME OF COMPANY']].rename(columns={'SYMBOL': 'Symbol', 'NAME OF COMPANY': 'Name'})
+        data['Symbol'] = data['Symbol'] + '.NS'  # Append `.NS` for yfinance compatibility
+        return data
+    except Exception as e:
+        st.error("Failed to load Indian stock data from the local file. Please ensure the file exists.")
+        return pd.DataFrame(columns=["Name", "Symbol"])
+
+
+# Load global stock list (S&P 500)
+@st.cache_data
+def load_global_stocks():
+    url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    try:
+        tables = pd.read_html(requests.get(url).content)
+        return tables[0][['Security', 'Symbol']].rename(columns={'Security': 'Name'})
+    except Exception as e:
+        st.error("Failed to load global stock data from Wikipedia.")
+        return pd.DataFrame(columns=["Name", "Symbol"])
+
 
 def get_stock_data(symbols):
     """Fetch the current stock prices and changes for a list of symbols."""
@@ -466,6 +494,12 @@ def main():
         This app predicts stock prices using historical data and advanced machine learning models.
         Enter a stock symbol, select a date range, and click **Predict** to see the results.
         """)
+    
+    # Load stocks
+    indian_stocks = load_indian_stocks()
+    global_stocks = load_global_stocks()
+    combined_stocks = pd.concat([indian_stocks, global_stocks], ignore_index=True)
+    stock_dict = {row['Name']: row['Symbol'] for _, row in combined_stocks.iterrows()}
 
     # Define the stock symbols to display
     stock_symbols = ["AAPL", "GOOGL", "TSLA", "MSFT", "AMZN", "NFLX", "NVDA", "META"]
@@ -479,19 +513,15 @@ def main():
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            stock_symbol = st.text_input(
-                'Enter Stock Symbol:',
-                placeholder='e.g., AAPL, GOOGL, IOC.NS',
-                help="Provide the stock ticker symbol (e.g., AAPL for Apple)."
+            stock_name = st.selectbox(
+            "Search for a stock by name:",
+            options=[""] + list(stock_dict.keys()),
+            format_func=lambda x: "Select a stock" if x == "" else x,
             )
-
         with col2:
-            start_date = st.date_input(
-                "Start Date:",
-                value=pd.to_datetime('2010-01-01'),
-                help="Select the start date for historical data."
-            )
-
+            stock_symbol = stock_dict.get(stock_name, "")
+            start_date = st.date_input("Start Date:", pd.to_datetime("2010-01-01")) 
+                
         with col3:
             end_date = st.date_input(
                 "End Date:",
