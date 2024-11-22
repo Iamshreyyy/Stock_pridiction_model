@@ -1,5 +1,7 @@
+# utils.py
 import matplotlib.pyplot as plt
 import yfinance as yf
+import streamlit as st
 
 def plot_predictions(y_test, y_pred, stock_symbol):
     # Fetch stock information using yfinance
@@ -14,4 +16,4 @@ def plot_predictions(y_test, y_pred, stock_symbol):
     plt.xlabel('Date')
     plt.ylabel('Price')
     plt.legend()
-    plt.show()
+    st.pyplot(plt)  # Display the plot in Streamlit
