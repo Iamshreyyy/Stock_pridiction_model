@@ -455,44 +455,82 @@ def get_stock_data(symbols):
             stock_data.append({"symbol": symbol, "error": str(e)})
     return stock_data
 
+def get_indian_indices():
+    """Fetch current data for Indian indices like Sensex and Nifty 50."""
+    indices = {
+        "Sensex": "^BSESN",
+        "Nifty 50": "^NSEI"
+    }
+    index_data = []
+    for name, symbol in indices.items():
+        try:
+            ticker = yf.Ticker(symbol)
+            data = ticker.history(period="1d")
+            if not data.empty:
+                current_price = data['Close'].iloc[-1]
+                previous_close = data['Close'].iloc[-2] if len(data) > 1 else current_price
+                change = current_price - previous_close
+                percent_change = (change / previous_close) * 100 if previous_close != 0 else 0
+                index_data.append({
+                    "name": name,
+                    "symbol": symbol,
+                    "current_price": current_price,
+                    "change": change,
+                    "percent_change": percent_change
+                })
+        except Exception as e:
+            index_data.append({"name": name, "symbol": symbol, "error": str(e)})
+    return index_data
 
-def display_ticker(stock_data, placeholder):
-    """Display a scrolling ticker for stock information."""
+
+def display_ticker(stock_data, placeholder, indian_index_data=None):
+    """Display a scrolling ticker for stock and index information."""
+    ticker_items = []
+    
+    # Add stock data to ticker
     if stock_data:
-        # Prepare the ticker text
-        ticker_text = " | ".join([
+        ticker_items.extend([
             f"{stock['symbol']}: ${stock['current_price']:.2f} "
             f"({stock['change']:+.2f}, {stock['percent_change']:+.2f}%)"
             for stock in stock_data if "error" not in stock
         ])
-        
-        # Inject HTML and CSS for scrolling animation
-        placeholder.markdown(f"""
-        <div style="
-            overflow: hidden;
-            white-space: nowrap;
-            width: 100%;
-            background-color: #f9f9f9;
-            border-radius: 5px;
-            padding: 10px;
-            font-size: 18px;
-            position: relative;
-            display: flex;
-            align-items: center;">
-            <div style="
-                display: inline-block;
-                animation: ticker-scroll 15s linear infinite;">
-                {ticker_text}
-            </div>
-        </div>
-        <style>
-        @keyframes ticker-scroll {{
-            0% {{ transform: translateX(100%); }}
-            100% {{ transform: translateX(-100%); }}
-        }}
-        </style>
-        """, unsafe_allow_html=True)
+    
+    # Add Indian index data to ticker
+    if indian_index_data:
+        ticker_items.extend([
+            f"{index['name']}: {index['current_price']:.2f} "
+            f"({index['change']:+.2f}, {index['percent_change']:+.2f}%)"
+            for index in indian_index_data if "error" not in index
+        ])
+    
+    ticker_text = " | ".join(ticker_items)
 
+    # Inject HTML and CSS for scrolling animation
+    placeholder.markdown(f"""
+    <div style="
+        overflow: hidden;
+        white-space: nowrap;
+        width: 100%;
+        background-color: #f9f9f9;
+        border-radius: 5px;
+        padding: 10px;
+        font-size: 18px;
+        position: relative;
+        display: flex;
+        align-items: center;">
+        <div style="
+            display: inline-block;
+            animation: ticker-scroll 15s linear infinite;">
+            {ticker_text}
+        </div>
+    </div>
+    <style>
+    @keyframes ticker-scroll {{
+        0% {{ transform: translateX(100%); }}
+        100% {{ transform: translateX(-100%); }}
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 
 def main():
     # Set up the page configuration
@@ -518,9 +556,10 @@ def main():
     # Fetch stock data for the ticker
     if 'stock_data' not in st.session_state:
         st.session_state.stock_data = get_stock_data(stock_symbols)
+    indian_index_data = get_indian_indices()
 
     # Update ticker without refreshing the page
-    display_ticker(st.session_state.stock_data, ticker_placeholder)
+    display_ticker(st.session_state.stock_data, ticker_placeholder,indian_index_data)
 
     # Input and prediction sections
     with st.container():
