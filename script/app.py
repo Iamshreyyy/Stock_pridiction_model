@@ -406,7 +406,6 @@ from utils import plot_predictions  # Ensure this file exists and contains the f
 from main import run_model  # Ensure this file exists and contains the function
 import requests
 import yfinance as yf
-from streamlit_autorefresh import st_autorefresh
 
 @st.cache_data
 def load_indian_stocks():
@@ -423,7 +422,6 @@ def load_indian_stocks():
         return pd.DataFrame(columns=["Name", "Symbol"])
 
 
-# Load global stock list (S&P 500)
 @st.cache_data
 def load_global_stocks():
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
@@ -457,31 +455,45 @@ def get_stock_data(symbols):
             stock_data.append({"symbol": symbol, "error": str(e)})
     return stock_data
 
-def display_ticker(stock_data):
-    """Show a rotating ticker stripe of stock information."""
+
+def display_ticker(stock_data, placeholder):
+    """Display a scrolling ticker for stock information."""
     if stock_data:
-        ticker_text = " | ".join([f"{stock['symbol']}: ${stock['current_price']:.2f} "
-                                  f"({stock['change']:+.2f}, {stock['percent_change']:+.2f}%)"
-                                  for stock in stock_data if "error" not in stock])
-        st.markdown(f"""
+        # Prepare the ticker text
+        ticker_text = " | ".join([
+            f"{stock['symbol']}: ${stock['current_price']:.2f} "
+            f"({stock['change']:+.2f}, {stock['percent_change']:+.2f}%)"
+            for stock in stock_data if "error" not in stock
+        ])
+        
+        # Inject HTML and CSS for scrolling animation
+        placeholder.markdown(f"""
         <div style="
-            white-space: nowrap; 
-            overflow: hidden; 
-            width: 100%; 
-            animation: ticker 15s linear infinite; 
-            background-color: #f9f9f9; 
-            padding: 10px;
+            overflow: hidden;
+            white-space: nowrap;
+            width: 100%;
+            background-color: #f9f9f9;
             border-radius: 5px;
-            font-size: 18px;">
-            {ticker_text}
+            padding: 10px;
+            font-size: 18px;
+            position: relative;
+            display: flex;
+            align-items: center;">
+            <div style="
+                display: inline-block;
+                animation: ticker-scroll 15s linear infinite;">
+                {ticker_text}
+            </div>
         </div>
         <style>
-        @keyframes ticker {{
+        @keyframes ticker-scroll {{
             0% {{ transform: translateX(100%); }}
             100% {{ transform: translateX(-100%); }}
         }}
         </style>
         """, unsafe_allow_html=True)
+
+
 def main():
     # Set up the page configuration
     st.set_page_config(page_title="Stock Price Prediction App", layout="wide")
@@ -497,10 +509,20 @@ def main():
     combined_stocks = pd.concat([indian_stocks, global_stocks], ignore_index=True)
     stock_dict = {row['Name']: row['Symbol'] for _, row in combined_stocks.iterrows()}
 
-    # Define the stock symbols to display
+    # Define the stock symbols to display in the ticker
     stock_symbols = ["AAPL", "GOOGL", "TSLA", "MSFT", "AMZN", "NFLX", "NVDA", "META"]
 
-    # Input and prediction sections (remain outside the auto-refresh scope)
+    # Ticker placeholder
+    ticker_placeholder = st.empty()
+
+    # Fetch stock data for the ticker
+    if 'stock_data' not in st.session_state:
+        st.session_state.stock_data = get_stock_data(stock_symbols)
+
+    # Update ticker without refreshing the page
+    display_ticker(st.session_state.stock_data, ticker_placeholder)
+
+    # Input and prediction sections
     with st.container():
         st.subheader("🔧 User Inputs")
         col1, col2, col3 = st.columns(3)
@@ -513,7 +535,7 @@ def main():
             )
         with col2:
             stock_symbol = stock_dict.get(stock_name, "")
-            start_date = st.date_input("Start Date:", pd.to_datetime("2010-01-01")) 
+            start_date = st.date_input("Start Date:", pd.to_datetime("2010-01-01"))
 
         with col3:
             end_date = st.date_input(
@@ -522,7 +544,6 @@ def main():
                 help="Select the end date for historical data."
             )
 
-        # Reset session state if the selected stock changes
         if 'previous_symbol' not in st.session_state or st.session_state.previous_symbol != stock_symbol:
             st.session_state.previous_symbol = stock_symbol
             if 'prediction' in st.session_state:
@@ -530,13 +551,12 @@ def main():
 
         st.markdown("---")
 
-    # Prediction and output section (remains outside the auto-refresh scope)
+    # Prediction and output section
     with st.container():
         if st.button("🚀 Predict"):
             st.subheader("🔍 Model Evaluation and Results")
 
             try:
-                # Run the model and store the results in session state
                 if 'prediction' not in st.session_state:
                     y_test, y_pred, stock_symbol = run_model(stock_symbol, start_date, end_date)
                     st.session_state.prediction = {
@@ -545,19 +565,16 @@ def main():
                         'stock_symbol': stock_symbol
                     }
 
-                # Use stored results from session state
                 prediction = st.session_state.prediction
                 y_test = prediction['y_test']
                 y_pred = prediction['y_pred']
                 stock_symbol = prediction['stock_symbol']
 
-                # Display evaluation metrics
                 col1, col2, col3 = st.columns(3)
                 col1.metric("Mean Absolute Error (MAE)", f"{mean_absolute_error(y_test, y_pred):.4f}")
                 col2.metric("Mean Squared Error (MSE)", f"{mean_squared_error(y_test, y_pred):.4f}")
                 col3.metric("R² Score", f"{r2_score(y_test, y_pred):.4f}")
 
-                # Display predictions
                 st.subheader(f"📊 Predictions for {stock_symbol}")
                 plot_predictions(y_test, y_pred, stock_symbol)
 
@@ -566,10 +583,12 @@ def main():
         else:
             st.info("Click **Predict** to generate predictions.")
 
-    # Footer (remains outside the auto-refresh scope)
+    # Footer
     with st.container():
         st.markdown("---")
         st.write("Developed by [Your Name](https://github.com/your-profile).")
-    
+
+
 if __name__ == "__main__":
     main()
+
