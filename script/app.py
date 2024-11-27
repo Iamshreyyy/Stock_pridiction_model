@@ -511,7 +511,7 @@ def display_ticker(stock_data, placeholder, indian_index_data=None):
         overflow: hidden;
         white-space: nowrap;
         width: 100%;
-        background-color: #f9f9f9;
+        background-color: white;
         border-radius: 5px;
         padding: 10px;
         font-size: 18px;
