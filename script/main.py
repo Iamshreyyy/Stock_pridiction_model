@@ -14,7 +14,7 @@ def run_model(stock_symbol, start_date, end_date):
     return y_test, y_pred, stock_symbol
 
 if __name__ == "__main__":
-    stock_symbol = 'TCS.NS'
+    stock_symbol = 'IOC.NS'
     start_date = '2010-01-01'
     end_date = '2024-01-01'
     run_model(stock_symbol, start_date, end_date)
