@@ -621,6 +621,7 @@ def main():
                 st.error(f"An error occurred: {e}")
         else:
             st.info("Click **Predict** to generate predictions.")
+            
 
     # Footer
     with st.container():
